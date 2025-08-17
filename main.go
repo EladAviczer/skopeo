@@ -16,6 +16,7 @@ type DaggerSkopeo struct{}
 func (m *DaggerSkopeo) Base(
 	// +optional
 	// +default="latest"
+	// Trivy image version tag.
 	trivyImageTag string,
 ) *dagger.Container {
 	return dag.Container().
@@ -26,36 +27,47 @@ func (m *DaggerSkopeo) Base(
 // Scan an image ref.
 func (m *DaggerSkopeo) ScanImage(
 	ctx context.Context,
+	// Reference to the image to scan
 	imageRef string,
 	// +optional
 	// +default="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+	// which severity levels to include in the scan
 	severity string,
 	// +optional
 	// +default=0
+	// exit code to return if vulnerabilities are found
 	exitCode int,
 	// +optional
 	// +default="table"
+	// output format of the scan results
 	format string,
 	// +optional
 	// +default="latest"
+	// Trivy image version tag
 	trivyImageTag string,
+	// token for authentication
 	auth *dagger.Secret,
 ) (string, error) {
 	return m.Base(trivyImageTag).
 		WithSecretVariable("TRIVY_PASSWORD", auth).
 		WithEnvVariable("TRIVY_USERNAME", "eladav").
-		// WithExec([]string{"echo", "$TRIVY_PASSWORD", "|", "trivy", "registry", "login", "--username", "eladav", "--password-stdin", "artifactory.rafael.co.il:6079"}).
 		WithExec([]string{"trivy", "image", "--quiet", "--severity", severity, "--exit-code", strconv.Itoa(exitCode), "--format", format, imageRef}).Stdout(ctx)
 }
 
 // MirrorOne mirrors a single image from a source registry to a destination registry using Skopeo.
 func (m *DaggerSkopeo) MirrorOne(
 	ctx context.Context,
+	// path for AWS credentials file used for authentication
 	awsCreds *dagger.File,
+	// AWS region for ECR
 	awsRegion string,
+	// source and destination registries and repository tag
 	srcRegistry, dstRegistry, repoTag string,
+	// destination user for authentication
 	dstUser string,
+	// destination password for authentication
 	dstPass *dagger.Secret,
+	// wether to pull the image from AWS ECR or not
 	awsPull bool,
 ) error {
 	var rawTok = ""
@@ -88,12 +100,19 @@ func (m *DaggerSkopeo) MirrorOne(
 // MirrorMany mirrors multiple images from a source registry to a destination registry using Skopeo.
 func (m *DaggerSkopeo) MirrorMany(
 	ctx context.Context,
+	// path for AWS credentials file used for authentication
 	awsCreds *dagger.File,
+	// AWS region for ECR
 	awsRegion string,
+	// source and destination registries and repository tags
 	srcRegistry, dstRegistry string,
+	// repository tags to mirror
 	repoTags []string,
+	// destination user for authentication
 	dstUser string,
+	// destination password for authentication
 	dstPass *dagger.Secret,
+	// whether to pull the image from AWS ECR or not
 	awsPull bool,
 ) error {
 	if len(repoTags) == 0 {
