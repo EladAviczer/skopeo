@@ -58,15 +58,22 @@ func (m *DaggerSkopeo) ScanImage(
 func (m *DaggerSkopeo) MirrorOne(
 	ctx context.Context,
 	// path for AWS credentials file used for authentication
+	// +optional
 	awsCreds *dagger.File,
 	// AWS region for ECR
+	// +optional
 	awsRegion string,
 	// source and destination registries and repository tag
 	srcRegistry, dstRegistry, repoTag string,
 	// destination user for authentication
 	dstUser string,
 	// destination password for authentication
+	// +optional
 	dstPass *dagger.Secret,
+	// +optional
+	// default=false
+	// destination reference for the image, if empty, uses the repoTag
+	dstRef string,
 	// wether to pull the image from AWS ECR or not
 	awsPull bool,
 ) error {
@@ -80,9 +87,13 @@ func (m *DaggerSkopeo) MirrorOne(
 		rawTok = tok
 	}
 	srcPass := dag.SetSecret("ecr-pass", rawTok)
-
+	if dstRef != "" {
+		dstRef = fmt.Sprintf("docker://%s/%s", dstRegistry, dstRef)
+	} else {
+		dstRef = fmt.Sprintf("docker://%s/%s", dstRegistry, repoTag)
+	}
 	srcRef := fmt.Sprintf("docker://%s/%s", srcRegistry, repoTag)
-	dstRef := fmt.Sprintf("docker://%s/%s", dstRegistry, repoTag)
+	//
 
 	cmd := fmt.Sprintf(
 		`skopeo copy --preserve-digests --src-creds AWS:$SRC_PASS --dest-creds %s:$DST_PASS %s %s`,
@@ -112,6 +123,10 @@ func (m *DaggerSkopeo) MirrorMany(
 	dstUser string,
 	// destination password for authentication
 	dstPass *dagger.Secret,
+	// +optional
+	// default=false
+	// destination reference for the image, if empty, uses the repoTag
+	dstRef string,
 	// whether to pull the image from AWS ECR or not
 	awsPull bool,
 ) error {
@@ -126,7 +141,7 @@ func (m *DaggerSkopeo) MirrorMany(
 			return m.MirrorOne(
 				gctx, awsCreds, awsRegion,
 				srcRegistry, dstRegistry, tag,
-				dstUser, dstPass, false,
+				dstUser, dstPass, dstRef, false,
 			)
 		})
 	}
