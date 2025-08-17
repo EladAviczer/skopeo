@@ -1,0 +1,14 @@
+{
+  "name": "dagger-skopeo",
+  "engineVersion": "v0.18.15-250718205822-e71fe8e0e691",
+  "sdk": {
+    "source": "go"
+  },
+  "dependencies": [
+    {
+      "name": "aws",
+      "source": "github.com/daggerverse/dagger-aws@v0.1.5",
+      "pin": "1a990041100a99101b5d2dae557215f917379712"
+    }
+  ]
+}
