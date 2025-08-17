@@ -48,17 +48,7 @@ func (m *DaggerSkopeo) ScanImage(
 		WithExec([]string{"trivy", "image", "--quiet", "--severity", severity, "--exit-code", strconv.Itoa(exitCode), "--format", format, imageRef}).Stdout(ctx)
 }
 
-// Module entry-point
-// type Module struct{}
-
-// Copy an image from one registry to another using Core API and daggerverse
-func (m *DaggerSkopeo) Copy(ctx context.Context, src, dst string) error {
-	_, err := dag.Container().
-		From(src).
-		Publish(ctx, dst)
-	return err
-}
-
+// MirrorOne mirrors a single image from a source registry to a destination registry using Skopeo.
 func (m *DaggerSkopeo) MirrorOne(
 	ctx context.Context,
 	awsCreds *dagger.File,
@@ -95,6 +85,7 @@ func (m *DaggerSkopeo) MirrorOne(
 	return err
 }
 
+// MirrorMany mirrors multiple images from a source registry to a destination registry using Skopeo.
 func (m *DaggerSkopeo) MirrorMany(
 	ctx context.Context,
 	awsCreds *dagger.File,
@@ -112,8 +103,6 @@ func (m *DaggerSkopeo) MirrorMany(
 	g, gctx := errgroup.WithContext(ctx)
 
 	for _, tag := range repoTags {
-		// capture loop variable
-		tag := tag
 		g.Go(func() error {
 			return m.MirrorOne(
 				gctx, awsCreds, awsRegion,
