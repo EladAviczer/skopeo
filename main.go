@@ -10,10 +10,10 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type DaggerSkopeo struct{}
+type Skopeo struct{}
 
 // Return a Container from the official trivy image.
-func (m *DaggerSkopeo) Base(
+func (m *Skopeo) Base(
 	// +optional
 	// +default="latest"
 	// Trivy image version tag.
@@ -25,7 +25,7 @@ func (m *DaggerSkopeo) Base(
 }
 
 // Scan an image ref.
-func (m *DaggerSkopeo) ScanImage(
+func (m *Skopeo) ScanImage(
 	ctx context.Context,
 	// Reference to the image to scan
 	imageRef string,
@@ -55,7 +55,7 @@ func (m *DaggerSkopeo) ScanImage(
 }
 
 // MirrorOne mirrors a single image from a source registry to a destination registry using Skopeo.
-func (m *DaggerSkopeo) MirrorOne(
+func (m *Skopeo) MirrorOne(
 	ctx context.Context,
 	// path for AWS credentials file used for authentication
 	// +optional
@@ -109,7 +109,7 @@ func (m *DaggerSkopeo) MirrorOne(
 }
 
 // MirrorMany mirrors multiple images from a source registry to a destination registry using Skopeo.
-func (m *DaggerSkopeo) MirrorMany(
+func (m *Skopeo) MirrorMany(
 	ctx context.Context,
 	// path for AWS credentials file used for authentication
 	awsCreds *dagger.File,
