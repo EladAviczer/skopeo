@@ -1,6 +1,6 @@
 {
-  "name": "dagger-skopeo",
-  "engineVersion": "v0.18.14",
+  "name": "Skopeo",
+  "engineVersion": "v0.18.16",
   "sdk": {
     "source": "go"
   },
