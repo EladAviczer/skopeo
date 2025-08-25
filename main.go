@@ -12,6 +12,36 @@ import (
 
 type Skopeo struct{}
 
+// SkopeoAgent: natural-language "assignment" drives dagger-skopeo functions.
+func (m *Skopeo) Ask(
+	ctx context.Context,
+	question string, // e.g. "inspect nginx:1.27"
+) (string, error) {
+	env := dag.Env().
+		WithStringInput("question", question, "The question about the OCI image").
+		// expose THIS module (all exported functions on Skopeo) as tools under the name "skopeo"
+		WithModuleInput(
+			"skopeo",
+			dag.CurrentModule().Source().AsModule(), // <-- correct way to get a Module
+			"Tools for skopeo operations (e.g., SkopeoInspect)",
+		)
+
+	prompt := `
+You are a container-registry operations agent.
+You can call functions from the $skopeo module.
+
+Goal: answer the user's question using real tool calls when needed.
+If inspection is required, call: skopeo.SkopeoInspect(imageRef: string) -> stdout JSON.
+
+Question: $question
+`
+
+	return dag.LLM().
+		WithEnv(env).
+		WithPrompt(prompt).
+		LastReply(ctx)
+}
+
 // Return a Container from the official trivy image.
 func (m *Skopeo) Base(
 	// +optional
@@ -147,4 +177,14 @@ func (m *Skopeo) MirrorMany(
 	}
 
 	return g.Wait()
+}
+
+func (m *Skopeo) SkopeoInspect(
+	ctx context.Context,
+	// Reference to the image to inspect
+	imageRef string,
+) (string, error) {
+	return dag.Container().
+		From("quay.io/skopeo/stable:latest").
+		WithExec([]string{"skopeo", "inspect", "--raw", imageRef}).Stdout(ctx)
 }
