@@ -10,7 +10,20 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type Skopeo struct{}
+// New constructs the Skopeo module with configurable defaults.
+func New(
+	// +default="latest"
+	// Version tag for quay.io/skopeo/stable
+	skopeoImageTag string,
+) *Skopeo {
+	return &Skopeo{
+		SkopeoImageTag: skopeoImageTag,
+	}
+}
+
+type Skopeo struct {
+	SkopeoImageTag string
+}
 
 // SkopeoAgent: natural-language "assignment" drives dagger-skopeo functions.
 func (m *Skopeo) Ask(
@@ -130,7 +143,7 @@ func (m *Skopeo) MirrorOne(
 		dstUser, srcRef, dstRef)
 
 	_, err := dag.Container().
-		From("quay.io/skopeo/stable:latest").
+		From(fmt.Sprintf("quay.io/skopeo/stable:%s", m.SkopeoImageTag)).
 		WithSecretVariable("SRC_PASS", srcPass).
 		WithSecretVariable("DST_PASS", dstPass).
 		WithExec([]string{"sh", "-c", cmd}).
@@ -183,8 +196,15 @@ func (m *Skopeo) SkopeoInspect(
 	ctx context.Context,
 	// Reference to the image to inspect
 	imageRef string,
+	// +optional
+	// +default="{{.Name}}:{{.Tag}} Digest: {{.Digest}} Arch: {{.Architecture}} | OS: {{.Os}}"
+	// Go template format string for skopeo inspect
+	format string,
 ) (string, error) {
+
+	//dstRef = fmt.Sprintf("docker://%s/%s", dstRegistry, dstRef)
+	ref := fmt.Sprintf("docker://docker.io/%s", imageRef)
 	return dag.Container().
-		From("quay.io/skopeo/stable:latest").
-		WithExec([]string{"skopeo", "inspect", "--raw", imageRef}).Stdout(ctx)
+		From(fmt.Sprintf("quay.io/skopeo/stable:%s", m.SkopeoImageTag)).
+		WithExec([]string{"skopeo", "inspect", "--format", format, ref}).Stdout(ctx)
 }
