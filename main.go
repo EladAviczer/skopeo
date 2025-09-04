@@ -25,36 +25,6 @@ type Skopeo struct {
 	SkopeoImageTag string
 }
 
-// SkopeoAgent: natural-language "assignment" drives dagger-skopeo functions.
-func (m *Skopeo) Ask(
-	ctx context.Context,
-	question string, // e.g. "inspect nginx:1.27"
-) (string, error) {
-	env := dag.Env().
-		WithStringInput("question", question, "The question about the OCI image").
-		// expose THIS module (all exported functions on Skopeo) as tools under the name "skopeo"
-		WithModuleInput(
-			"skopeo",
-			dag.CurrentModule().Source().AsModule(), // <-- correct way to get a Module
-			"Tools for skopeo operations (e.g., SkopeoInspect)",
-		)
-
-	prompt := `
-You are a container-registry operations agent.
-You can call functions from the $skopeo module.
-
-Goal: answer the user's question using real tool calls when needed.
-If inspection is required, call: skopeo.SkopeoInspect(imageRef: string) -> stdout JSON.
-
-Question: $question
-`
-
-	return dag.LLM().
-		WithEnv(env).
-		WithPrompt(prompt).
-		LastReply(ctx)
-}
-
 // Return a Container from the official trivy image.
 func (m *Skopeo) Base(
 	// +optional
@@ -114,7 +84,7 @@ func (m *Skopeo) MirrorOne(
 	// +optional
 	dstPass *dagger.Secret,
 	// +optional
-	// default=false
+	// default=""
 	// destination reference for the image, if empty, uses the repoTag
 	dstRef string,
 	// wether to pull the image from AWS ECR or not
@@ -167,7 +137,7 @@ func (m *Skopeo) MirrorMany(
 	// destination password for authentication
 	dstPass *dagger.Secret,
 	// +optional
-	// default=false
+	// default=""
 	// destination reference for the image, if empty, uses the repoTag
 	dstRef string,
 	// whether to pull the image from AWS ECR or not
@@ -200,11 +170,32 @@ func (m *Skopeo) SkopeoInspect(
 	// +default="{{.Name}}:{{.Tag}} Digest: {{.Digest}} Arch: {{.Architecture}} | OS: {{.Os}}"
 	// Go template format string for skopeo inspect
 	format string,
+	registry string,
 ) (string, error) {
 
 	//dstRef = fmt.Sprintf("docker://%s/%s", dstRegistry, dstRef)
-	ref := fmt.Sprintf("docker://docker.io/%s", imageRef)
+	ref := fmt.Sprintf("docker://%s/%s", registry, imageRef)
 	return dag.Container().
 		From(fmt.Sprintf("quay.io/skopeo/stable:%s", m.SkopeoImageTag)).
 		WithExec([]string{"skopeo", "inspect", "--format", format, ref}).Stdout(ctx)
+}
+
+// Check version of the skopeo image used.
+func (m *Skopeo) Version(ctx context.Context) (string, error) {
+	return dag.Container().
+		From(fmt.Sprintf("quay.io/skopeo/stable:%s", m.SkopeoImageTag)).
+		WithExec([]string{"skopeo", "--version"}).Stdout(ctx)
+}
+
+// Delete an image from a registry.
+func (m *Skopeo) Delete(
+	ctx context.Context,
+	// Reference to the image to delete
+	imageRef string,
+	registry string,
+) (string, error) {
+	ref := fmt.Sprintf("docker://%s/%s", registry, imageRef)
+	return dag.Container().
+		From(fmt.Sprintf("quay.io/skopeo/stable:%s", m.SkopeoImageTag)).
+		WithExec([]string{"skopeo", "delete", ref}).Stdout(ctx)
 }
